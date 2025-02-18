@@ -16,18 +16,23 @@ AInteractive::AInteractive()
 
 void AInteractive::CheckTagCondition(AActor* TagOwner)
 {
-	if (IGameplayTagAssetInterface* TagAssetInterface = Cast<IGameplayTagAssetInterface>(TagOwner))
-	{
-		FGameplayTagContainer CharacterTags;
-		TagAssetInterface->GetOwnedGameplayTags(CharacterTags);
-		
-		if(!CharacterTags.HasTag(FGameplayStatesManager::Get().Tag_InteractEnabled)) return; 
-
-		if (CharacterTags.HasTag(ConditionTag))
-		{
-			ExecuteAction();
-		}
+	if (UUTHUB_ASC* ASC = TagOwner->FindComponentByClass<UUTHUB_ASC>())
+	{		
+		ASC->AddLooseGameplayTag(ConditionTag);
 	}
+	
+	// if (IGameplayTagAssetInterface* TagAssetInterface = Cast<IGameplayTagAssetInterface>(TagOwner))
+	// {
+	// 	FGameplayTagContainer CharacterTags;
+	// 	TagAssetInterface->GetOwnedGameplayTags(CharacterTags);
+	// 	
+	// 	if(!CharacterTags.HasTag(FGameplayStatesManager::Get().Tag_InteractEnabled)) return; 
+	//
+	// 	if (CharacterTags.HasTag(ConditionTag))
+	// 	{
+	// 		ExecuteAction();
+	// 	}
+	// }
 }
 
 // Called when the game starts or when spawned

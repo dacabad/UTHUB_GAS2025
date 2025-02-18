@@ -2,6 +2,7 @@
 
 #include "UTHUB_GAS2025Character.h"
 
+#include "CoreAttributeSet.h"
 #include "GameplayBaseStateTags.h"
 #include "GameplayStatesManager.h"
 #include "UObject/ConstructorHelpers.h"
@@ -13,6 +14,8 @@
 #include "Materials/Material.h"
 #include "Engine/World.h"
 #include "UTHUB_ASC.h"
+#include "DataDriven/GameplayAttributeEffector.h"
+#include "DataDriven/GASDataComponent.h"
 
 AUTHUB_GAS2025Character::AUTHUB_GAS2025Character()
 {
@@ -49,6 +52,9 @@ AUTHUB_GAS2025Character::AUTHUB_GAS2025Character()
 	// Activate ticking in order to update the cursor every frame.
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = true;
+
+	CoreAttributeSet = CreateDefaultSubobject<UCoreAttributeSet>(TEXT("CoreAttributes"));
+	GASDataComponent = CreateDefaultSubobject<UGASDataComponent>(TEXT("GASData"));
 }
 
 void AUTHUB_GAS2025Character::Tick(float DeltaSeconds)
@@ -69,6 +75,20 @@ void AUTHUB_GAS2025Character::AddTag(const FGameplayTag& InTag)
 void AUTHUB_GAS2025Character::RemoveTag(const FGameplayTag& InTag)
 {
 	GameplayStates.RemoveTag(InTag);
+}
+
+void AUTHUB_GAS2025Character::ApplyGameplayEffect()
+{
+	if (ASC)
+	{
+		FGameplayEffectContextHandle EffectContext = ASC->MakeEffectContext();
+		EffectContext.AddSourceObject(this);
+
+		const FGameplayEffectSpecHandle Spec = ASC->MakeOutgoingSpec(SampleEffect, 1, EffectContext);
+		
+		ASC->ApplyGameplayEffectSpecToSelf(*Spec.Data.Get());
+	}
+	
 }
 
 UAbilitySystemComponent* AUTHUB_GAS2025Character::GetAbilitySystemComponent() const
@@ -97,12 +117,55 @@ void AUTHUB_GAS2025Character::InitializeCharacter()
 
 void AUTHUB_GAS2025Character::BeginPlay()
 {
+	if (ensure(ASC))
+	{
+		// auto& Delegate = ASC->GetGameplayAttributeValueChangeDelegate(UCoreAttributeSet::GetSpeedAttribute());
+		// Delegate.AddLambda([this](const FOnAttributeChangeData& InChangeData)
+		// {
+		// 	GetCharacterMovement()->MaxWalkSpeed = InChangeData.NewValue;
+		// });
+	}
+
+	ASC->GetAttributeSetFromOwner<UCoreAttributeSet>()->SetSpeed(100.f);
+
 	Super::BeginPlay();
 
 	check(CharacterStates)
 	GameplayStates.AddTag(CharacterStates->Tag_Alive);
 
 	InitializeCharacter();
+}
+
+void AUTHUB_GAS2025Character::SetupAttributeCallbacks()
+{
+	//for (auto AttributeEffectorsPair : GASDataComponent->AttributeEffectors)
+	for (auto [Attribute, EffectorClass] : GASDataComponent->AttributeEffectors)
+	{
+		auto& Delegate = ASC->GetGameplayAttributeValueChangeDelegate(Attribute);
+
+		UGameplayAttributeEffector* Effector = EffectorClass->GetDefaultObject<UGameplayAttributeEffector>();
+		
+		Delegate.AddUObject(Effector, &UGameplayAttributeEffector::ApplyAttributeEffector);
+
+
+		// Una línea :)
+		// ASC->GetGameplayAttributeValueChangeDelegate(Attribute).AddUObject(
+		// 	EffectorClass->GetDefaultObject<UGameplayAttributeEffector>(),
+		// 	&UGameplayAttributeEffector::ApplyAttributeEffector);
+	}
+
+	// auto& Delegate = ASC->GetGameplayAttributeValueChangeDelegate(UCoreAttributeSet::GetSpeedAttribute());
+	// Delegate.AddLambda([this](const FOnAttributeChangeData& InChangeData)
+	// {
+	// 	GetCharacterMovement()->MaxWalkSpeed = InChangeData.NewValue;
+	// });
+}
+
+void AUTHUB_GAS2025Character::PreInitializeComponents()
+{
+	Super::PreInitializeComponents();
+
+	
 }
 
 void AUTHUB_GAS2025Character::Jump()

@@ -35,10 +35,14 @@ public:
 	
 	UUTHUB_ASC();
 
+	void ApplyEffectFromClass(const TSubclassOf<UGameplayEffect>& EffectClass);
+	
 protected:
 	
 	virtual void BeginPlay() override;
-	
+	void InitializeAttributes(AActor* InOwnerActor);
+	void InitializeAttributesFromEffects();
+
 public:
 
 	virtual void InitAbilityActorInfo(AActor* InOwnerActor, AActor* InAvatarActor) override;
@@ -46,4 +50,28 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType,
 	                           FActorComponentTickFunction* ThisTickFunction) override;
+
+// private:
+
+	template<typename AttrSetType>
+	AttrSetType* GetAttributeSetFromOwner() const;
 };
+
+template <typename AttrSetType>
+AttrSetType* UUTHUB_ASC::GetAttributeSetFromOwner() const
+{
+	if (!GetOwner())
+		return nullptr;
+	
+	TArray<UObject*> SubObjects;
+	GetOwner()->GetDefaultSubobjects(SubObjects);
+
+	UObject** AttrSet = SubObjects.FindByPredicate([](const UObject* Obj)
+	{
+		return Obj->IsA(AttrSetType::StaticClass());
+	});
+
+	if (!AttrSet) return nullptr;
+
+	return Cast<AttrSetType>(*AttrSet);
+}
